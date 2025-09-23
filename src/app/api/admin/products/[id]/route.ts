@@ -24,7 +24,7 @@ function verifyAdminToken(request: NextRequest) {
 // GET - Fetch single product for editing
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin token
@@ -36,7 +36,8 @@ export async function GET(
       );
     }
 
-    const productId = parseInt(params.id);
+    const { id } = await params;
+    const productId = parseInt(id);
     if (isNaN(productId)) {
       return NextResponse.json(
         { success: false, error: "Invalid product ID" },
@@ -85,7 +86,7 @@ export async function GET(
 // PUT - Update product
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin token
@@ -97,7 +98,8 @@ export async function PUT(
       );
     }
 
-    const productId = parseInt(params.id);
+    const { id } = await params;
+    const productId = parseInt(id);
     if (isNaN(productId)) {
       return NextResponse.json(
         { success: false, error: "Invalid product ID" },
@@ -151,7 +153,7 @@ export async function PUT(
         category,
         strain || null,
         parseInt(stock_quantity),
-        JSON.stringify(image_urls || []),
+        image_urls || [],
         is_active !== false,
         productId,
       ]
@@ -194,7 +196,7 @@ export async function PUT(
 // DELETE - Delete product
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Verify admin token
@@ -206,7 +208,8 @@ export async function DELETE(
       );
     }
 
-    const productId = parseInt(params.id);
+    const { id } = await params;
+    const productId = parseInt(id);
     if (isNaN(productId)) {
       return NextResponse.json(
         { success: false, error: "Invalid product ID" },
@@ -227,12 +230,8 @@ export async function DELETE(
       );
     }
 
-    // Instead of hard delete, we'll soft delete by setting is_active = false
-    // This preserves order history
-    await pool.query(
-      "UPDATE products SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1",
-      [productId]
-    );
+    // Hard delete - completely remove the product
+    await pool.query("DELETE FROM products WHERE id = $1", [productId]);
 
     return NextResponse.json({
       success: true,

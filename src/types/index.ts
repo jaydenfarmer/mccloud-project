@@ -18,20 +18,22 @@ export interface CartItem {
 }
 
 export interface Order {
-  id: number;
+  id: string; // Changed from number to string
   customerEmail: string;
-  customerName: string;
+  customerName?: string; // Made optional since it can be null
   shippingAddress: Address;
   totalAmount: number;
-  status: "pending" | "processing" | "shipped" | "delivered";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled"; // Added "cancelled"
   items: CartItem[];
   createdAt: string;
 }
 
 export interface Address {
-  street: string;
+  name: string; // Added name field
+  line1: string; // Changed from street to line1
+  line2?: string; // Added optional line2
   city: string;
   state: string;
-  zipCode: string;
+  postal_code: string; // Changed from zipCode to postal_code
   country: string;
 }

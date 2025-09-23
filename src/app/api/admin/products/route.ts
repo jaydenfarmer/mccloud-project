@@ -68,14 +68,21 @@ export async function GET(request: NextRequest) {
 // POST - Create new product
 export async function POST(request: NextRequest) {
   try {
+    console.log("🔍 Starting product creation...");
+
     // Verify admin token
     const user = verifyAdminToken(request);
     if (!user) {
+      console.log("❌ Unauthorized - invalid token");
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 }
       );
     }
+    console.log("✅ Admin token verified");
+
+    const body = await request.json();
+    console.log("📦 Request body:", body);
 
     const {
       name,
@@ -86,7 +93,7 @@ export async function POST(request: NextRequest) {
       stock_quantity,
       image_urls,
       is_active,
-    } = await request.json();
+    } = body;
 
     // Validate required fields
     if (
@@ -96,12 +103,21 @@ export async function POST(request: NextRequest) {
       !category ||
       stock_quantity === undefined
     ) {
+      console.log("❌ Missing required fields:", {
+        name,
+        description,
+        price,
+        category,
+        stock_quantity,
+      });
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
         { status: 400 }
       );
     }
+    console.log("✅ Validation passed");
 
+    console.log("🗄️ Inserting into database...");
     // Insert new product
     const result = await pool.query(
       `INSERT INTO products (
@@ -116,10 +132,11 @@ export async function POST(request: NextRequest) {
         category,
         strain || null,
         parseInt(stock_quantity),
-        JSON.stringify(image_urls || []),
+        image_urls || [],
         is_active !== false, // Default to true
       ]
     );
+    console.log("✅ Database insert successful:", result.rows[0]);
 
     const newProduct = result.rows[0];
 
@@ -140,7 +157,25 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error creating product:", error);
+    console.error("💥 Error creating product:", error);
+
+    // Type-safe error handling
+    if (error instanceof Error) {
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+      });
+    }
+
+    // For PostgreSQL errors specifically
+    interface PgError extends Error {
+      code?: string;
+    }
+    if (error && typeof error === "object" && "code" in error) {
+      const dbError = error as PgError;
+      console.error("Database error code:", dbError.code);
+    }
+
     return NextResponse.json(
       { success: false, error: "Failed to create product" },
       { status: 500 }
