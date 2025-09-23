@@ -1,17 +1,14 @@
 import ProductGrid from '@/components/products/product-grid'
 import Hero from '@/components/layout/hero'
 import { Truck, Shield, Leaf, Award } from 'lucide-react'
-import Header from '@/components/layout/header'
-import Footer from '@/components/layout/footer'
 
 export default function Home() {
   return (
     <div>
-      <Header />
       <Hero />
       
       {/* Features */}
-      <section className="py-16 bg-gray-500">
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
@@ -60,8 +57,6 @@ export default function Home() {
           <ProductGrid />
         </div>
       </section>
-
-      <Footer />
     </div>
   )
 }

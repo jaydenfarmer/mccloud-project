@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-// GET /api/products/[id] - Get single product from database
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -28,12 +27,26 @@ export async function GET(
       );
     }
 
+    const product = result.rows[0];
+
     return NextResponse.json({
       success: true,
-      data: result.rows[0],
+      product: {
+        id: product.id,
+        name: product.name,
+        description: product.description,
+        price: parseFloat(product.price),
+        category: product.category,
+        strain: product.strain,
+        stock_quantity: product.stock_quantity,
+        image_urls: product.image_urls || [],
+        is_active: product.is_active,
+        created_at: product.created_at,
+        updated_at: product.updated_at,
+      },
     });
   } catch (error) {
-    console.error("Database error:", error);
+    console.error("Error fetching product:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch product" },
       { status: 500 }

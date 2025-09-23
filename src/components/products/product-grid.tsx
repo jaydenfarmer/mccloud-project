@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import { Product } from '@/types'
-import { ShoppingCart, Star } from 'lucide-react'
-import Image from 'next/image'
+import { ShoppingCart, Star, Check } from 'lucide-react'
+import { useCart } from '@/lib/cart-context'
 
 export default function ProductGrid() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const [addedToCart, setAddedToCart] = useState<number | null>(null)
+  
+  const { addToCart } = useCart()
 
   useEffect(() => {
     fetchProducts()
@@ -19,13 +22,23 @@ export default function ProductGrid() {
       const data = await response.json()
       
       if (data.success) {
-        setProducts(data.data)
+        setProducts(data.products)
       }
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleAddToCart = (product: Product) => {
+    addToCart(product, 1)
+    setAddedToCart(product.id)
+    
+    // Reset the "added" state after 2 seconds
+    setTimeout(() => {
+      setAddedToCart(null)
+    }, 2000)
   }
 
   if (loading) {
@@ -83,22 +96,34 @@ export default function ProductGrid() {
                   ${product.price}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {product.stockQuantity > 0 ? `${product.stockQuantity} in stock` : 'Out of stock'}
+                  {product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}
                 </p>
               </div>
               
               <button 
+                onClick={() => handleAddToCart(product)}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  product.stockQuantity > 0 
-                    ? 'bg-green-600 text-white hover:bg-green-700 hover:scale-105' 
+                  product.stock_quantity > 0 
+                    ? addedToCart === product.id
+                      ? 'bg-green-700 text-white'
+                      : 'bg-green-600 text-white hover:bg-green-700 hover:scale-105'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}
-                disabled={product.stockQuantity === 0}
+                disabled={product.stock_quantity === 0}
               >
-                <ShoppingCart className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {product.stockQuantity > 0 ? 'Add to Cart' : 'Sold Out'}
-                </span>
+                {addedToCart === product.id ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span className="hidden sm:inline">Added!</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      {product.stock_quantity > 0 ? 'Add to Cart' : 'Sold Out'}
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </div>

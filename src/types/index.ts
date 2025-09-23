@@ -5,9 +5,11 @@ export interface Product {
   price: number;
   category: string;
   strain?: string;
-  stockQuantity: number;
-  imageUrls: string[];
-  isActive?: boolean;
+  stock_quantity: number;
+  image_urls: string[];
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CartItem {

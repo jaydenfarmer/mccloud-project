@@ -1,46 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import pool from "@/lib/db";
 
-// GET /api/products - Get all products from database
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Debug: Check if DATABASE_URL is loaded
-    console.log("DATABASE_URL exists:", !!process.env.DATABASE_URL);
-    console.log(
-      "DATABASE_URL starts with:",
-      process.env.DATABASE_URL?.substring(0, 20)
+    const result = await pool.query(
+      "SELECT * FROM products WHERE is_active = true ORDER BY created_at DESC"
     );
 
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
-
-    let query = "SELECT * FROM products WHERE is_active = true";
-    const params: string[] = [];
-
-    if (category) {
-      query += " AND category = $1";
-      params.push(category);
-    }
-
-    query += " ORDER BY created_at DESC";
-
-    const result = await pool.query(query, params);
+    const products = result.rows.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: parseFloat(product.price),
+      category: product.category,
+      strain: product.strain,
+      stock_quantity: product.stock_quantity,
+      image_urls: product.image_urls || [],
+      is_active: product.is_active,
+      created_at: product.created_at,
+      updated_at: product.updated_at,
+    }));
 
     return NextResponse.json({
       success: true,
-      data: result.rows,
+      products: products, // Change from 'data' to 'products'
     });
   } catch (error) {
-    console.error("Full database error:", error);
+    console.error("Error fetching products:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch products",
-        details:
-          typeof error === "object" && error !== null && "message" in error
-            ? (error as { message: string }).message
-            : String(error),
-      },
+      { success: false, error: "Failed to fetch products" },
       { status: 500 }
     );
   }
