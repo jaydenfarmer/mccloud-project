@@ -153,7 +153,7 @@ export default function OrderPage({ params }: OrderPageProps) {
               </Link>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Order #{order.id.slice(-8).toUpperCase()}
+                  Order #{String(order.id).padStart(8, '0').slice(-8).toUpperCase()}
                 </h1>
                 <p className="text-gray-600">
                   Placed on {new Date(order.createdAt).toLocaleDateString()}
