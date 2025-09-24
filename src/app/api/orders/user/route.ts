@@ -1,96 +1,69 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db";
-import { Order, CartItem } from "@/types";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userEmail = searchParams.get("email");
+    const email = searchParams.get("email");
 
-    if (!userEmail) {
+    if (!email) {
       return NextResponse.json(
-        { success: false, error: "User email is required" },
+        { success: false, error: "Email parameter is required" },
         { status: 400 }
       );
     }
 
-    // Get orders for this user
-    const ordersResult = await pool.query(
-      `SELECT 
+    // Query orders for the user with items
+    const orderResult = await pool.query(
+      `
+      SELECT 
         o.id,
         o.customer_email,
         o.customer_name,
         o.total_amount,
         o.status,
         o.created_at,
-        o.shipping_address
-      FROM orders o 
-      WHERE o.customer_email = $1 
-      ORDER BY o.created_at DESC`,
-      [userEmail]
+        o.shipping_address,
+        json_agg(
+          json_build_object(
+            'product', json_build_object(
+              'name', p.name,
+              'price', oi.price
+            ),
+            'quantity', oi.quantity
+          )
+        ) as items
+      FROM orders o
+      LEFT JOIN order_items oi ON o.id = oi.order_id
+      LEFT JOIN products p ON oi.product_id = p.id
+      WHERE LOWER(o.customer_email) = LOWER($1)
+      GROUP BY o.id, o.customer_email, o.customer_name, o.total_amount, o.status, o.created_at, o.shipping_address
+      ORDER BY o.created_at DESC
+    `,
+      [email]
     );
 
-    const orders: Order[] = [];
-
-    // Get order items for each order
-    for (const orderRow of ordersResult.rows) {
-      const itemsResult = await pool.query(
-        `SELECT 
-          oi.quantity,
-          oi.price,
-          p.id,
-          p.name,
-          p.description,
-          p.category,
-          p.strain,
-          p.stock_quantity,
-          p.image_urls,
-          p.is_active,
-          p.created_at as product_created_at,
-          p.updated_at as product_updated_at
-        FROM order_items oi
-        JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = $1`,
-        [orderRow.id]
-      );
-
-      const cartItems: CartItem[] = itemsResult.rows.map((item) => ({
-        product: {
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          price: parseFloat(item.price),
-          category: item.category,
-          strain: item.strain,
-          stock_quantity: item.stock_quantity,
-          image_urls: item.image_urls || [],
-          is_active: item.is_active,
-          created_at: item.product_created_at,
-          updated_at: item.product_updated_at,
-        },
-        quantity: item.quantity,
-      }));
-
-      const order: Order = {
-        id: orderRow.id,
-        customerEmail: orderRow.customer_email,
-        customerName: orderRow.customer_name,
-        totalAmount: parseFloat(orderRow.total_amount),
-        status: orderRow.status,
-        createdAt: orderRow.created_at,
-        shippingAddress: JSON.parse(orderRow.shipping_address),
-        items: cartItems,
-      };
-
-      orders.push(order);
-    }
+    // Transform the data to match your Order type
+    const orders = orderResult.rows.map((row) => ({
+      id: row.id,
+      customerEmail: row.customer_email,
+      customerName: row.customer_name,
+      totalAmount: parseFloat(row.total_amount),
+      status: row.status,
+      createdAt: row.created_at,
+      items: row.items || [],
+      shippingAddress:
+        typeof row.shipping_address === "string"
+          ? JSON.parse(row.shipping_address)
+          : row.shipping_address,
+    }));
 
     return NextResponse.json({
       success: true,
       orders: orders,
     });
   } catch (error) {
-    console.error("Fetch orders error:", error);
+    console.error("Error fetching user orders:", error);
     return NextResponse.json(
       { success: false, error: "Failed to fetch orders" },
       { status: 500 }
